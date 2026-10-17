@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aimee's Recipes</title>
+  <meta name="description" content="Aimee's family recipe book">
+  <meta name="theme-color" content="#FFE3EA">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Recipes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <img src="icons/icon.svg" alt="" class="logo">
+    <h1 id="pageTitle">Aimee's Recipes</h1>
+  </header>
+
+  <main id="main">
+    <!-- RECIPES -->
+    <section id="view-recipes" class="view active" aria-label="Recipes">
+      <button class="btn btn-add" id="addBtn" type="button">
+        <span class="plus">+</span> Add a recipe
+      </button>
+      <div class="filter-row" role="group" aria-label="Show">
+        <button class="pill active" data-list-filter="all" type="button">All</button>
+        <button class="pill" data-list-filter="family" type="button">Family</button>
+        <button class="pill" data-list-filter="aimee-dad" type="button">Aimee &amp; Dad</button>
+      </div>
+      <div id="recipeList" class="list"></div>
+    </section>
+
+    <!-- ADD / EDIT -->
+    <section id="view-edit" class="view" aria-label="Add or edit recipe">
+      <form id="recipeForm" class="card form" novalidate>
+        <label class="field">
+          <span class="label">Title <em>*</em></span>
+          <input id="fTitle" type="text" required maxlength="120" placeholder="e.g. Grandma's lasagne" autocomplete="off">
+          <span class="error" id="titleError" hidden>Please add a title</span>
+        </label>
+
+        <div class="field">
+          <span class="label">Date added</span>
+          <div class="date-chip" id="fDate"></div>
+        </div>
+
+        <div class="field">
+          <span class="label">Who's it for?</span>
+          <div class="segmented" id="fFor">
+            <button type="button" data-for="family" class="active">🏡 Family</button>
+            <button type="button" data-for="aimee-dad">💕 Aimee &amp; Dad</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="label">Ingredients <small>one per line</small></span>
+          <textarea id="fIngredients" rows="6" placeholder="200g pasta&#10;1 tin tomatoes&#10;Grated cheese"></textarea>
+        </label>
+
+        <label class="field">
+          <span class="label">Method</span>
+          <textarea id="fMethod" rows="8" placeholder="1. Boil the pasta…&#10;2. Make the sauce…"></textarea>
+        </label>
+
+        <div class="field">
+          <span class="label">Tastiness <small id="scoreLabel">not rated</small></span>
+          <div class="score-picker" id="fScore"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save recipe</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- DETAIL -->
+    <section id="view-detail" class="view" aria-label="Recipe"></section>
+
+    <!-- SEARCH -->
+    <section id="view-search" class="view" aria-label="Search">
+      <div class="card">
+        <span class="label">Search by</span>
+        <div class="field-tabs" id="searchFields">
+          <button type="button" data-field="title" class="active">Title</button>
+          <button type="button" data-field="date">Date</button>
+          <button type="button" data-field="for">For</button>
+          <button type="button" data-field="ingredients">Ingredients</button>
+          <button type="button" data-field="method">Method</button>
+          <button type="button" data-field="score">Score</button>
+        </div>
+        <div id="searchInput" class="search-input"></div>
+      </div>
+      <p class="result-count" id="resultCount"></p>
+      <div id="searchResults" class="list"></div>
+    </section>
+
+    <!-- BACKUP -->
+    <section id="view-backup" class="view" aria-label="Backup">
+      <div class="card hero mint">
+        <div class="hero-emoji">💾</div>
+        <h2>Back up your recipes</h2>
+        <p>Saves every recipe into one file. Keep it in Files, iCloud, Google Drive, or send it by message or email to the other phone.</p>
+        <p class="stat" id="backupStat"></p>
+        <button class="btn btn-primary wide" id="backupBtn" type="button">Create backup file</button>
+        <p class="muted small" id="lastBackup"></p>
+      </div>
+    </section>
+
+    <!-- RESTORE -->
+    <section id="view-restore" class="view" aria-label="Restore">
+      <div class="card hero lavender">
+        <div class="hero-emoji">📥</div>
+        <h2>Restore from a backup</h2>
+        <p>Pick a backup file made on this phone or another one.</p>
+        <div class="segmented" id="restoreMode">
+          <button type="button" data-mode="merge" class="active">Merge</button>
+          <button type="button" data-mode="replace">Replace all</button>
+        </div>
+        <p class="muted small" id="restoreHint">Merge adds new recipes and updates changed ones. Nothing is deleted.</p>
+        <label class="btn btn-primary wide file-btn">
+          Choose backup file
+          <input type="file" id="restoreFile" accept=".json,application/json,text/plain" hidden>
+        </label>
+      </div>
+      <div class="card about">
+        <p><strong>App version</strong> <span id="appVersion"></span></p>
+        <button class="btn btn-ghost wide" id="updateBtn" type="button">Check for updates</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab active" data-tab="recipes" type="button"><span class="ti">📖</span><span>Recipes</span></button>
+    <button class="tab" data-tab="search" type="button"><span class="ti">🔍</span><span>Search</span></button>
+    <button class="tab" data-tab="backup" type="button"><span class="ti">💾</span><span>Backup</span></button>
+    <button class="tab" data-tab="restore" type="button"><span class="ti">📥</span><span>Restore</span></button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

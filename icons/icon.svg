@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD9E4"/>
+      <stop offset="0.55" stop-color="#FFE6CF"/>
+      <stop offset="1" stop-color="#D9F2E6"/>
+    </linearGradient>
+    <linearGradient id="pot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C9BDF5"/>
+      <stop offset="1" stop-color="#A895EC"/>
+    </linearGradient>
+    <linearGradient id="heart" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF9DB5"/>
+      <stop offset="1" stop-color="#F57A9A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- sparkles -->
+  <g fill="#FFFFFF" opacity="0.9">
+    <path d="M110 120 l8 20 20 8 -20 8 -8 20 -8 -20 -20 -8 20 -8z"/>
+    <path d="M400 96 l6 14 14 6 -14 6 -6 14 -6 -14 -14 -6 14 -6z"/>
+    <circle cx="416" cy="210" r="7"/>
+    <circle cx="92" cy="232" r="5"/>
+  </g>
+  <!-- steam -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity="0.95">
+    <path d="M186 196 c-18 -22 18 -34 0 -60"/>
+    <path d="M326 196 c-18 -22 18 -34 0 -60"/>
+  </g>
+  <!-- heart rising from pot -->
+  <path d="M256 214 C256 214 206 182 206 148 C206 126 222 112 240 112 C250 112 256 120 256 120 C256 120 262 112 272 112 C290 112 306 126 306 148 C306 182 256 214 256 214Z" fill="url(#heart)"/>
+  <ellipse cx="238" cy="140" rx="9" ry="6" fill="#FFFFFF" opacity="0.6"/>
+  <!-- pot handles -->
+  <rect x="96" y="270" width="64" height="30" rx="15" fill="#A895EC"/>
+  <rect x="352" y="270" width="64" height="30" rx="15" fill="#A895EC"/>
+  <!-- lid rim -->
+  <rect x="122" y="236" width="268" height="34" rx="17" fill="#8FD9B6"/>
+  <!-- pot body -->
+  <path d="M138 262 H374 V352 C374 388 346 412 310 412 H202 C166 412 138 388 138 352Z" fill="url(#pot)"/>
+  <!-- shine -->
+  <rect x="160" y="282" width="14" height="70" rx="7" fill="#FFFFFF" opacity="0.45"/>
+  <!-- cute face -->
+  <circle cx="222" cy="330" r="10" fill="#5B4A8C"/>
+  <circle cx="290" cy="330" r="10" fill="#5B4A8C"/>
+  <path d="M240 352 q16 16 32 0" fill="none" stroke="#5B4A8C" stroke-width="8" stroke-linecap="round"/>
+  <ellipse cx="200" cy="356" rx="14" ry="8" fill="#FF9DB5" opacity="0.7"/>
+  <ellipse cx="312" cy="356" rx="14" ry="8" fill="#FF9DB5" opacity="0.7"/>
+</svg>
