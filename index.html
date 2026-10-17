@@ -46,6 +46,14 @@
         </label>
 
         <div class="field">
+          <span class="label">Cooking or baking?</span>
+          <div class="segmented type-seg" id="fType">
+            <button type="button" data-type="cooking" class="active">🍳 Cooking</button>
+            <button type="button" data-type="baking">🧁 Baking</button>
+          </div>
+        </div>
+
+        <div class="field">
           <span class="label">Date added</span>
           <div class="date-chip" id="fDate"></div>
         </div>
@@ -104,7 +112,13 @@
     <!-- SEARCH -->
     <section id="view-search" class="view" aria-label="Search">
       <div class="card">
-        <span class="label">Search by</span>
+        <span class="label">Show</span>
+        <div class="segmented type-seg" id="searchType">
+          <button type="button" data-type="all" class="active">All</button>
+          <button type="button" data-type="cooking">🍳 Cooking</button>
+          <button type="button" data-type="baking">🧁 Baking</button>
+        </div>
+        <span class="label" style="margin-top:16px">Search by</span>
         <div class="field-tabs" id="searchFields">
           <button type="button" data-field="title" class="active">Title</button>
           <button type="button" data-field="date">Date</button>

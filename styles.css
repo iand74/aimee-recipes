@@ -235,3 +235,9 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .chip-row button.picked { background: var(--mint); border-color: #A6DEC3; color: var(--ink); }
 .form .field.two-col { display: block; }
 .two-col > div + div { margin-top: 16px; }
+
+/* v1.3 – cooking / baking */
+.tag.cooking { background: var(--peach); color: #9A5A2A; }
+.tag.baking { background: var(--lavender); color: #5B47A8; }
+.type-seg button.active[data-type="cooking"] { background: var(--peach); }
+.type-seg button.active[data-type="baking"] { background: var(--lavender); }

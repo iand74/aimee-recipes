@@ -1,11 +1,13 @@
 /* Aimee's Recipes – stored on the phone (localStorage), works offline. */
 'use strict';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const STORE_KEY = 'aimee-recipes.v1';
 const META_KEY = 'aimee-recipes.meta';
 const FOR_LABEL = { family: 'Family', 'aimee-dad': 'Aimee & Dad' };
 const FOR_EMOJI = { family: '🏡', 'aimee-dad': '💕' };
+const TYPE_LABEL = { cooking: 'Cooking', baking: 'Baking' };
+const TYPE_EMOJI = { cooking: '🍳', baking: '🧁' };
 const BADGE_BG = ['#CDEFDF', '#FFE1C7', '#E3DBFB', '#FFF1B8', '#D3EBFB', '#FFC7D6'];
 
 /* ---------- storage ---------- */
@@ -20,6 +22,18 @@ function loadMeta() { try { return JSON.parse(localStorage.getItem(META_KEY)) ||
 function saveMeta(m) { try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch {} }
 
 let recipes = loadRecipes();
+
+/* v1.3 upgrade: recipes saved before Cooking/Baking existed become "Cooking".
+   Nothing is removed; a one-off safety copy of the old data is kept first. */
+(function migrateType() {
+  const needs = recipes.filter(r => r && r.type !== 'cooking' && r.type !== 'baking');
+  if (!needs.length) return;
+  try {
+    if (!localStorage.getItem(STORE_KEY + '.pre-1.3')) localStorage.setItem(STORE_KEY + '.pre-1.3', localStorage.getItem(STORE_KEY) || '[]');
+  } catch {}
+  needs.forEach(r => { r.type = 'cooking'; });
+  saveRecipes(recipes);
+})();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
 /* ---------- helpers ---------- */
@@ -76,10 +90,10 @@ $$('.tab').forEach(t => t.addEventListener('click', () => goTab(t.dataset.tab)))
 function cardHTML(r, extra = '') {
   const score = r.score ? `<div class="score-badge">${r.score}<small>/10</small></div>` : `<div class="score-badge none">–</div>`;
   return `<button class="recipe-card" type="button" data-id="${esc(r.id)}">
-    <div class="badge" style="background:${badgeColour(r.id)}">${FOR_EMOJI[r.forWho] || '🍽️'}</div>
+    <div class="badge" style="background:${badgeColour(r.id)}">${TYPE_EMOJI[r.type] || '🍽️'}</div>
     <div>
       <h3>${extra && extra.titleHTML ? extra.titleHTML : esc(r.title)}</h3>
-      <div class="meta"><span>${fmtDate(r.dateAdded)}</span><span class="tag ${esc(r.forWho)}">${FOR_LABEL[r.forWho]}</span>${r.timeMins ? `<span>⏱️ ${fmtTime(r.timeMins)}</span>` : ''}${r.serves ? `<span>🍽️ ${r.serves}</span>` : ''}</div>
+      <div class="meta"><span>${fmtDate(r.dateAdded)}</span><span class="tag ${esc(r.type)}">${TYPE_LABEL[r.type] || 'Cooking'}</span><span class="tag ${esc(r.forWho)}">${FOR_LABEL[r.forWho]}</span>${r.timeMins ? `<span>⏱️ ${fmtTime(r.timeMins)}</span>` : ''}${r.serves ? `<span>🍽️ ${r.serves}</span>` : ''}</div>
       ${extra && extra.snippet ? `<div class="snippet">${extra.snippet}</div>` : ''}
     </div>
     ${score}
@@ -111,6 +125,7 @@ function renderList() {
 /* ---------- add / edit ---------- */
 let editing = null; // recipe being edited or null
 let formFor = 'family';
+let formType = 'cooking';
 let formScore = null;
 
 function buildScorePicker() {
@@ -137,6 +152,8 @@ function fmtTime(m) {
 }
 const toInt = v => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : null; };
 function scoreEmoji(s) { return s >= 9 ? '🤩' : s >= 7 ? '😋' : s >= 5 ? '🙂' : s >= 3 ? '😐' : '😬'; }
+function paintType() { $$('#fType button').forEach(b => b.classList.toggle('active', b.dataset.type === formType)); }
+$$('#fType button').forEach(b => b.addEventListener('click', () => { formType = b.dataset.type; paintType(); }));
 function paintFor() { $$('#fFor button').forEach(b => b.classList.toggle('active', b.dataset.for === formFor)); }
 $$('#fFor button').forEach(b => b.addEventListener('click', () => { formFor = b.dataset.for; paintFor(); }));
 
@@ -146,6 +163,8 @@ function openForm(recipe) {
   $('#fIngredients').value = recipe ? recipe.ingredients : '';
   $('#fMethod').value = recipe ? recipe.method : '';
   formFor = recipe ? recipe.forWho : 'family';
+  formType = recipe && recipe.type === 'baking' ? 'baking' : 'cooking';
+  paintType();
   formScore = recipe ? recipe.score : null;
   const tm = recipe && recipe.timeMins ? recipe.timeMins : 0;
   $('#fHours').value = tm >= 60 ? Math.floor(tm / 60) : '';
@@ -173,6 +192,7 @@ $('#recipeForm').addEventListener('submit', e => {
     timeMins: totalMins || null,
     serves: toInt($('#fServes').value),
     title,
+    type: formType,
     forWho: formFor,
     ingredients: $('#fIngredients').value.trim(),
     method: $('#fMethod').value.trim(),
@@ -205,6 +225,7 @@ function openDetail(id, from) {
       <h2>${esc(r.title)}</h2>
       <div class="meta">
         <span class="chip">📅 ${fmtDate(r.dateAdded)}</span>
+        <span class="chip">${TYPE_EMOJI[r.type] || '🍳'} ${TYPE_LABEL[r.type] || 'Cooking'}</span>
         <span class="chip">${FOR_EMOJI[r.forWho]} ${FOR_LABEL[r.forWho]}</span>
         <span class="chip">${r.score ? `😋 ${r.score}/10` : 'Not rated'}</span>
         ${r.timeMins ? `<span class="chip">⏱️ ${fmtTime(r.timeMins)}</span>` : ''}
@@ -301,17 +322,25 @@ function renderSearch(focus) {
   runSearch();
 }
 
+let searchType = 'all';
+$$('#searchType button').forEach(b => b.addEventListener('click', () => {
+  searchType = b.dataset.type;
+  $$('#searchType button').forEach(x => x.classList.toggle('active', x === b));
+  runSearch();
+}));
+
 function runSearch() {
   const f = searchField;
+  const pool = recipes.filter(r => searchType === 'all' || (r.type || 'cooking') === searchType);
   let results = [];
   let extra = () => ({});
   if (f === 'title') {
     const q = searchState.title.trim().toLowerCase();
-    results = q ? recipes.filter(r => r.title.toLowerCase().includes(q)) : [];
+    results = q ? pool.filter(r => r.title.toLowerCase().includes(q)) : [];
     extra = r => ({ titleHTML: highlight(r.title, searchState.title.trim()) });
   } else if (f === 'ingredients') {
     const terms = searchState.ingredients.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    results = terms.length ? recipes.filter(r => terms.every(t => (r.ingredients || '').toLowerCase().includes(t))) : [];
+    results = terms.length ? pool.filter(r => terms.every(t => (r.ingredients || '').toLowerCase().includes(t))) : [];
     extra = r => {
       const hits = lines(r.ingredients).filter(l => terms.some(t => l.toLowerCase().includes(t)));
       let s = hits.slice(0, 3).map(h => esc(h)).join(' · ');
@@ -320,7 +349,7 @@ function runSearch() {
     };
   } else if (f === 'method') {
     const q = searchState.method.trim().toLowerCase();
-    results = q ? recipes.filter(r => (r.method || '').toLowerCase().includes(q)) : [];
+    results = q ? pool.filter(r => (r.method || '').toLowerCase().includes(q)) : [];
     extra = r => {
       const m = r.method || ''; const i = m.toLowerCase().indexOf(q);
       const start = Math.max(0, i - 30); const piece = (start ? '…' : '') + m.slice(start, i + q.length + 50) + '…';
@@ -328,25 +357,27 @@ function runSearch() {
     };
   } else if (f === 'date') {
     const { from, to } = searchState;
-    results = (from || to) ? recipes.filter(r => { const k = dayKey(r.dateAdded); return (!from || k >= from) && (!to || k <= to); }) : [];
+    results = (from || to) ? pool.filter(r => { const k = dayKey(r.dateAdded); return (!from || k >= from) && (!to || k <= to); }) : [];
   } else if (f === 'for') {
-    results = recipes.filter(r => r.forWho === searchState.for);
+    results = pool.filter(r => r.forWho === searchState.for);
   } else if (f === 'time') {
-    results = recipes.filter(r => r.timeMins && r.timeMins <= searchState.time);
+    results = pool.filter(r => r.timeMins && r.timeMins <= searchState.time);
   } else if (f === 'serves') {
-    results = recipes.filter(r => r.serves && r.serves >= searchState.serves);
+    results = pool.filter(r => r.serves && r.serves >= searchState.serves);
   } else if (f === 'score') {
-    results = recipes.filter(r => r.score && r.score >= searchState.score);
+    results = pool.filter(r => r.score && r.score >= searchState.score);
   }
   results.sort(f === 'score' ? (a, b) => b.score - a.score || byNewest(a, b)
     : f === 'time' ? (a, b) => a.timeMins - b.timeMins || byNewest(a, b)
     : f === 'serves' ? (a, b) => a.serves - b.serves || byNewest(a, b) : byNewest);
 
-  const idle = results.length === 0 && ((f === 'title' && !searchState.title.trim()) || (f === 'ingredients' && !searchState.ingredients.trim()) || (f === 'method' && !searchState.method.trim()) || (f === 'date' && !searchState.from && !searchState.to));
+  const emptyQuery = (f === 'title' && !searchState.title.trim()) || (f === 'ingredients' && !searchState.ingredients.trim()) || (f === 'method' && !searchState.method.trim()) || (f === 'date' && !searchState.from && !searchState.to);
+  if (emptyQuery && searchType !== 'all') results = pool.slice().sort(byNewest); // just Cooking or Baking: show them all
+  const idle = emptyQuery && searchType === 'all';
   $('#resultCount').textContent = idle ? '' : `${results.length} recipe${results.length === 1 ? '' : 's'} found`;
   const el = $('#searchResults');
   if (idle) { el.innerHTML = `<div class="empty"><div class="big">🔍</div><p>Pick a field above and start searching.</p></div>`; return; }
-  if (!results.length) { el.innerHTML = `<div class="empty"><div class="big">🍳</div><p>Nothing matches yet.</p></div>`; return; }
+  if (!results.length) { el.innerHTML = `<div class="empty"><div class="big">🍳</div><p>${emptyQuery ? `No ${searchType} recipes yet.` : 'Nothing matches yet.'}</p></div>`; return; }
   el.innerHTML = results.map(r => cardHTML(r, extra(r))).join('');
   bindCards(el, 'search');
 }
@@ -401,6 +432,7 @@ function cleanRecipe(r) {
     id: String(r.id || uid()),
     title: String(r.title).trim().slice(0, 200),
     dateAdded: isNaN(date) ? new Date().toISOString() : date.toISOString(),
+    type: r.type === 'baking' ? 'baking' : 'cooking',
     forWho: r.forWho === 'aimee-dad' ? 'aimee-dad' : 'family',
     ingredients: String(r.ingredients || ''),
     timeMins: toInt(r.timeMins),

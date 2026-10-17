@@ -38,6 +38,8 @@ async def add_recipe(page, title, **f):
     await page.click('#addBtn')
     if title is not None:
         await page.fill('#fTitle', title)
+    if f.get('type') == 'baking':
+        await page.click('#fType [data-type="baking"]')
     if f.get('for') == 'aimee-dad':
         await page.click('#fFor [data-for="aimee-dad"]')
     if 'hours' in f: await page.fill('#fHours', str(f['hours']))
@@ -78,10 +80,11 @@ async def main():
         check('Title-only recipe saves', r['title'] == 'Toast')
         check('Date added is filled in automatically (today)', r['dateAdded'][:10] == date.today().isoformat(), r['dateAdded'])
         check('Defaults to "Family"', r['forWho'] == 'family')
+        check('Defaults to "Cooking"', r['type'] == 'cooking')
         check('Optional fields left empty', r['score'] is None and r['timeMins'] is None and r['serves'] is None and r['ingredients'] == '' and r['method'] == '')
         check('Recipe page opens after saving', await page.is_visible('#view-detail') and 'Toast' in await page.text_content('#view-detail'))
 
-        await add_recipe(page, 'Pancake Stack', **{'for': 'aimee-dad'}, hours=0, mins=20, serves=2,
+        await add_recipe(page, 'Pancake Stack', **{'for': 'aimee-dad', 'type': 'baking'}, hours=0, mins=20, serves=2,
                          ingredients='200g flour\n1 egg\n300ml milk\nBlueberries', method='Whisk the batter.\nFry in a hot pan until golden.', score=10)
         await add_recipe(page, 'Chicken Pie', hours=1, mins=15, serves=6,
                          ingredients='500g chicken\n1 leek\nPuff pastry\n2 garlic cloves', method='Brown the chicken. Bake in the oven at 200C.', score=8)
@@ -92,6 +95,7 @@ async def main():
         pan = next(x for x in data if x['title'] == 'Pancake Stack')
         check('4 recipes stored', len(data) == 4)
         check('All fields stored (pie)', pie['timeMins'] == 75 and pie['serves'] == 6 and pie['score'] == 8 and 'leek' in pie['ingredients'])
+        check('"Baking" stored (pancakes)', pan['type'] == 'baking' and pie['type'] == 'cooking')
         check('"Aimee & Dad" stored (pancakes)', pan['forWho'] == 'aimee-dad' and pan['timeMins'] == 20 and pan['serves'] == 2)
         detail = await page.text_content('#view-detail')
         check('Recipe page shows time, serves, score', '1 hr 15 min' not in detail and 'Garlic Bread' in detail and '15 min' in detail and 'Serves 4' in detail and '6/10' in detail)
@@ -108,6 +112,8 @@ async def main():
         await page.click('.tab[data-tab="recipes"]')
         await page.click('.recipe-card:has-text("Chicken Pie")')
         await page.click('#editBtn')
+        check('Edit form shows Cooking selected', await page.get_attribute('#fType [data-type="cooking"]', 'class') == 'active')
+        await page.click('#fType [data-type="baking"]')
         check('Edit form is pre-filled', await page.input_value('#fTitle') == 'Chicken Pie' and await page.input_value('#fHours') == '1' and await page.input_value('#fMins') == '15' and await page.input_value('#fServes') == '6')
         await page.fill('#fTitle', "Grandma's Chicken Pie")
         await page.click('#fScore [data-score="9"]')
@@ -116,6 +122,8 @@ async def main():
         pie2 = next(x for x in await stored(page) if x['id'] == pie['id'])
         check('Edit saves changes, keeps original date', pie2['title'] == "Grandma's Chicken Pie" and pie2['score'] == 9 and pie2['dateAdded'] == pie['dateAdded'])
         check('Edit keeps the same recipe (no duplicate)', len(await stored(page)) == 4)
+        check('Edit can switch Cooking → Baking', pie2['type'] == 'baking')
+        check('Recipe page shows Baking', 'Baking' in await page.text_content('#view-detail'))
 
         await page.click('.tab[data-tab="recipes"]')
         await page.click('.recipe-card:has-text("Toast")')
@@ -191,6 +199,37 @@ async def main():
         await page.click('#sServes [data-v="1"]')
         check('Serves search: at least 1 → 3', await search_count(page) == 3)
 
+        print('\n== Search: Cooking / Baking ==')
+        # now: Baking = Pancake Stack, Grandma's Chicken Pie ; Cooking = Toast, Garlic Bread
+        await page.click('#searchFields [data-field="title"]')
+        await page.fill('#sText', '')
+        await page.click('#searchType [data-type="baking"]')
+        check('Baking with no other filter lists all baking → 2', await search_count(page) == 2)
+        await page.click('#searchType [data-type="cooking"]')
+        check('Cooking with no other filter lists all cooking → 2', await search_count(page) == 2)
+        await page.click('#searchType [data-type="all"]')
+        check('All with empty search shows prompt', await search_count(page) == 0 and 'Pick a field' in await page.text_content('#searchResults'))
+        await page.click('#searchFields [data-field="ingredients"]')
+        await page.fill('#sText', 'garlic')
+        check('Ingredients garlic, All → 2', await search_count(page) == 2)
+        await page.click('#searchType [data-type="baking"]')
+        check('Ingredients garlic, Baking only → 1 (pie)', await search_count(page) == 1 and 'Chicken Pie' in await page.text_content('#searchResults'))
+        await page.click('#searchType [data-type="cooking"]')
+        check('Ingredients garlic, Cooking only → 1 (garlic bread)', await search_count(page) == 1 and 'Garlic Bread' in await page.text_content('#searchResults'))
+        await page.click('#searchFields [data-field="score"]')
+        await page.click('#sScore [data-score="9"]')
+        await page.click('#searchType [data-type="baking"]')
+        check('Score 9+, Baking → 2', await search_count(page) == 2)
+        await page.click('#searchType [data-type="cooking"]')
+        check('Score 9+, Cooking → 0 with message', await search_count(page) == 0)
+        await page.click('#searchFields [data-field="for"]')
+        await page.click('#sFor [data-for="aimee-dad"]')
+        await page.click('#searchType [data-type="baking"]')
+        check('For Aimee & Dad, Baking → 1', await search_count(page) == 1)
+        await page.click('#searchType [data-type="all"]')
+        await page.click('#searchFields [data-field="title"]')
+        await page.fill('#sText', 'a')
+
         await page.click('#searchResults .recipe-card >> nth=0')
         check('Tapping a search result opens it', await page.is_visible('#view-detail'))
         await page.click('.topbar .back')
@@ -206,7 +245,7 @@ async def main():
         await d.save_as(backup_path)
         b = json.load(open(backup_path))
         check('Backup file downloads with dated name', d.suggested_filename == f'aimee-recipes-backup-{today}.json', d.suggested_filename)
-        check('Backup contains all 4 recipes with every field', len(b['recipes']) == 4 and all(k in b['recipes'][0] for k in ['title', 'dateAdded', 'forWho', 'ingredients', 'method', 'score', 'timeMins', 'serves']))
+        check('Backup contains all 4 recipes with every field', len(b['recipes']) == 4 and all(k in b['recipes'][0] for k in ['type', 'title', 'dateAdded', 'forWho', 'ingredients', 'method', 'score', 'timeMins', 'serves']))
         check('"Last backup" date updates', 'Last backup' in await page.text_content('#lastBackup'))
         check('No script errors on phone 1', not errors, '; '.join(errors))
 
@@ -272,6 +311,43 @@ async def main():
         await page2.wait_for_timeout(200)
         check('A backup with no valid recipes is rejected', len(await stored(page2)) == 4)
         check('No script errors on phone 2', not errors2, '; '.join(errors2))
+
+        print('\n== Upgrading existing (pre-Cooking/Baking) data ==')
+        old = [
+          {'id': 'old1', 'title': 'Old Lasagne', 'dateAdded': '2026-10-10T18:00:00.000Z', 'forWho': 'family', 'ingredients': 'pasta\nmince', 'method': 'Layer and bake', 'score': 9, 'timeMins': 90, 'serves': 6, 'updated': '2026-10-10T18:00:00.000Z'},
+          {'id': 'old2', 'title': 'Old Brownies', 'dateAdded': '2026-10-11T15:00:00.000Z', 'forWho': 'aimee-dad', 'ingredients': 'chocolate', 'method': 'Melt, mix, bake', 'score': None, 'timeMins': None, 'serves': None, 'updated': '2026-10-11T15:00:00.000Z'},
+          {'id': 'old3', 'title': 'Very Old Soup', 'dateAdded': '2026-10-09T12:00:00.000Z', 'forWho': 'family', 'ingredients': '', 'method': '', 'score': 5, 'updated': '2026-10-09T12:00:00.000Z'},
+        ]
+        ctx4 = await browser.new_context(**PHONE, service_workers='block')
+        page4 = await ctx4.new_page(); e4 = []; page4.on('pageerror', lambda e: e4.append(str(e)))
+        await page4.goto(URL)
+        await page4.evaluate("d => localStorage.setItem('aimee-recipes.v1', JSON.stringify(d))", old)
+        await page4.reload(); await page4.wait_for_timeout(300)
+        up = await stored(page4)
+        check('Upgrade keeps every existing recipe', len(up) == 3 and sorted(x['id'] for x in up) == ['old1', 'old2', 'old3'])
+        check('Upgrade labels old recipes "Cooking"', all(x['type'] == 'cooking' for x in up))
+        same = all({k: v for k, v in u.items() if k != 'type'} == o for u, o in zip(sorted(up, key=lambda x: x['id']), old))
+        check('Upgrade leaves every other field untouched', same)
+        safety = await page4.evaluate("JSON.parse(localStorage.getItem('aimee-recipes.v1.pre-1.3') || 'null')")
+        check('Safety copy of the old data is kept', safety == old)
+        check('Old recipes show in the list', await page4.locator('#recipeList .recipe-card').count() == 3)
+        await page4.reload(); await page4.wait_for_timeout(300)
+        check('Upgrade runs once (reopen changes nothing)', await stored(page4) == up)
+        await page4.click('.recipe-card:has-text("Old Brownies")')
+        await page4.click('#editBtn')
+        await page4.click('#fType [data-type="baking"]')
+        await page4.click('#recipeForm button[type=submit]')
+        await page4.wait_for_timeout(150)
+        br = next(x for x in await stored(page4) if x['id'] == 'old2')
+        check('Old recipe can be re-labelled Baking', br['type'] == 'baking' and br['title'] == 'Old Brownies' and br['dateAdded'] == old[1]['dateAdded'])
+        oldbackup = os.path.join(tmp, 'old-backup.json')
+        json.dump({'app': 'aimee-recipes', 'version': 1, 'recipes': [dict(old[0], id='bk1', title='From Old Backup')]}, open(oldbackup, 'w'))
+        await page4.click('.tab[data-tab="restore"]')
+        await page4.set_input_files('#restoreFile', oldbackup)
+        await page4.wait_for_timeout(200)
+        fb = next((x for x in await stored(page4) if x['id'] == 'bk1'), None)
+        check('Restoring a backup made before this update works (→ Cooking)', fb is not None and fb['type'] == 'cooking' and len(await stored(page4)) == 4)
+        check('No script errors (upgrade)', not e4, '; '.join(e4))
 
         print('\n== Install & offline ==')
         ctx3 = await browser.new_context(**PHONE)
