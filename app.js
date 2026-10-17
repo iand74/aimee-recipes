@@ -1,7 +1,7 @@
 /* Aimee's Recipes – stored on the phone (localStorage), works offline. */
 'use strict';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const STORE_KEY = 'aimee-recipes.v1';
 const META_KEY = 'aimee-recipes.meta';
 const FOR_LABEL = { family: 'Family', 'aimee-dad': 'Aimee & Dad' };
