@@ -1,6 +1,6 @@
 /* Service worker: makes the app work offline and pick up updates.
    Bump VERSION whenever you push a change (keep it in step with APP_VERSION in app.js). */
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const CACHE = 'aimee-recipes-' + VERSION;
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',

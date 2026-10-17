@@ -1,7 +1,7 @@
 /* Aimee's Recipes – stored on the phone (localStorage), works offline. */
 'use strict';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const STORE_KEY = 'aimee-recipes.v1';
 const META_KEY = 'aimee-recipes.meta';
 const FOR_LABEL = { family: 'Family', 'aimee-dad': 'Aimee & Dad' };
@@ -79,7 +79,7 @@ function cardHTML(r, extra = '') {
     <div class="badge" style="background:${badgeColour(r.id)}">${FOR_EMOJI[r.forWho] || '🍽️'}</div>
     <div>
       <h3>${extra && extra.titleHTML ? extra.titleHTML : esc(r.title)}</h3>
-      <div class="meta"><span>${fmtDate(r.dateAdded)}</span><span class="tag ${esc(r.forWho)}">${FOR_LABEL[r.forWho]}</span></div>
+      <div class="meta"><span>${fmtDate(r.dateAdded)}</span><span class="tag ${esc(r.forWho)}">${FOR_LABEL[r.forWho]}</span>${r.timeMins ? `<span>⏱️ ${fmtTime(r.timeMins)}</span>` : ''}${r.serves ? `<span>🍽️ ${r.serves}</span>` : ''}</div>
       ${extra && extra.snippet ? `<div class="snippet">${extra.snippet}</div>` : ''}
     </div>
     ${score}
@@ -130,6 +130,12 @@ function paintScore() {
   });
   $('#scoreLabel').textContent = formScore ? `${formScore} / 10 ${scoreEmoji(formScore)}` : 'not rated';
 }
+function fmtTime(m) {
+  if (!m) return '';
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h ? `${h} hr${mm ? ' ' + mm + ' min' : ''}` : `${mm} min`;
+}
+const toInt = v => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : null; };
 function scoreEmoji(s) { return s >= 9 ? '🤩' : s >= 7 ? '😋' : s >= 5 ? '🙂' : s >= 3 ? '😐' : '😬'; }
 function paintFor() { $$('#fFor button').forEach(b => b.classList.toggle('active', b.dataset.for === formFor)); }
 $$('#fFor button').forEach(b => b.addEventListener('click', () => { formFor = b.dataset.for; paintFor(); }));
@@ -141,6 +147,10 @@ function openForm(recipe) {
   $('#fMethod').value = recipe ? recipe.method : '';
   formFor = recipe ? recipe.forWho : 'family';
   formScore = recipe ? recipe.score : null;
+  const tm = recipe && recipe.timeMins ? recipe.timeMins : 0;
+  $('#fHours').value = tm >= 60 ? Math.floor(tm / 60) : '';
+  $('#fMins').value = tm % 60 ? tm % 60 : '';
+  $('#fServes').value = recipe && recipe.serves ? recipe.serves : '';
   $('#fDate').textContent = '📅 ' + fmtDate(recipe ? recipe.dateAdded : new Date().toISOString()) + (recipe ? '' : ' (today)');
   $('#titleError').hidden = true; $('#fTitle').classList.remove('invalid');
   paintFor(); paintScore();
@@ -158,7 +168,10 @@ $('#recipeForm').addEventListener('submit', e => {
     return;
   }
   const now = new Date().toISOString();
+  const totalMins = (toInt($('#fHours').value) || 0) * 60 + (toInt($('#fMins').value) || 0);
   const data = {
+    timeMins: totalMins || null,
+    serves: toInt($('#fServes').value),
     title,
     forWho: formFor,
     ingredients: $('#fIngredients').value.trim(),
@@ -194,6 +207,8 @@ function openDetail(id, from) {
         <span class="chip">📅 ${fmtDate(r.dateAdded)}</span>
         <span class="chip">${FOR_EMOJI[r.forWho]} ${FOR_LABEL[r.forWho]}</span>
         <span class="chip">${r.score ? `😋 ${r.score}/10` : 'Not rated'}</span>
+        ${r.timeMins ? `<span class="chip">⏱️ ${fmtTime(r.timeMins)}</span>` : ''}
+        ${r.serves ? `<span class="chip">🍽️ Serves ${r.serves}</span>` : ''}
       </div>
       ${stars ? `<div class="stars" style="color:#E8A93B">${stars}</div>` : ''}
     </div>
@@ -226,7 +241,7 @@ function openDetail(id, from) {
 
 /* ---------- search ---------- */
 let searchField = 'title';
-const searchState = { title: '', ingredients: '', method: '', from: '', to: '', for: 'family', score: 7 };
+const searchState = { title: '', ingredients: '', method: '', from: '', to: '', for: 'family', score: 7, time: 30, serves: 4 };
 $$('#searchFields button').forEach(b => b.addEventListener('click', () => {
   searchField = b.dataset.field;
   $$('#searchFields button').forEach(x => x.classList.toggle('active', x === b));
@@ -257,6 +272,21 @@ function renderSearch(focus) {
     $$('#sFor button').forEach(b => {
       b.classList.toggle('active', b.dataset.for === searchState.for);
       b.addEventListener('click', () => { searchState.for = b.dataset.for; renderSearch(); });
+    });
+  } else if (f === 'time') {
+    const opts = [15, 30, 45, 60, 90, 120];
+    box.innerHTML = `<span class="label">Ready in <small>${fmtTime(searchState.time)} or less</small></span>
+      <div class="chip-row" id="sTime">${opts.map(o => `<button type="button" data-v="${o}">${fmtTime(o)}</button>`).join('')}</div>`;
+    $$('#sTime button').forEach(b => {
+      b.classList.toggle('picked', +b.dataset.v === searchState.time);
+      b.addEventListener('click', () => { searchState.time = +b.dataset.v; renderSearch(); });
+    });
+  } else if (f === 'serves') {
+    box.innerHTML = `<span class="label">Serves at least <small>${searchState.serves} ${searchState.serves === 1 ? 'person' : 'people'}</small></span>
+      <div class="chip-row" id="sServes">${[1, 2, 3, 4, 5, 6, 8, 10].map(o => `<button type="button" data-v="${o}">${o}</button>`).join('')}</div>`;
+    $$('#sServes button').forEach(b => {
+      b.classList.toggle('picked', +b.dataset.v === searchState.serves);
+      b.addEventListener('click', () => { searchState.serves = +b.dataset.v; renderSearch(); });
     });
   } else if (f === 'score') {
     box.innerHTML = `<span class="label">At least <small>${searchState.score}/10 ${scoreEmoji(searchState.score)}</small></span>
@@ -301,10 +331,16 @@ function runSearch() {
     results = (from || to) ? recipes.filter(r => { const k = dayKey(r.dateAdded); return (!from || k >= from) && (!to || k <= to); }) : [];
   } else if (f === 'for') {
     results = recipes.filter(r => r.forWho === searchState.for);
+  } else if (f === 'time') {
+    results = recipes.filter(r => r.timeMins && r.timeMins <= searchState.time);
+  } else if (f === 'serves') {
+    results = recipes.filter(r => r.serves && r.serves >= searchState.serves);
   } else if (f === 'score') {
     results = recipes.filter(r => r.score && r.score >= searchState.score);
   }
-  results.sort(f === 'score' ? (a, b) => b.score - a.score || byNewest(a, b) : byNewest);
+  results.sort(f === 'score' ? (a, b) => b.score - a.score || byNewest(a, b)
+    : f === 'time' ? (a, b) => a.timeMins - b.timeMins || byNewest(a, b)
+    : f === 'serves' ? (a, b) => a.serves - b.serves || byNewest(a, b) : byNewest);
 
   const idle = results.length === 0 && ((f === 'title' && !searchState.title.trim()) || (f === 'ingredients' && !searchState.ingredients.trim()) || (f === 'method' && !searchState.method.trim()) || (f === 'date' && !searchState.from && !searchState.to));
   $('#resultCount').textContent = idle ? '' : `${results.length} recipe${results.length === 1 ? '' : 's'} found`;
@@ -367,6 +403,8 @@ function cleanRecipe(r) {
     dateAdded: isNaN(date) ? new Date().toISOString() : date.toISOString(),
     forWho: r.forWho === 'aimee-dad' ? 'aimee-dad' : 'family',
     ingredients: String(r.ingredients || ''),
+    timeMins: toInt(r.timeMins),
+    serves: toInt(r.serves),
     method: String(r.method || ''),
     score: score >= 1 && score <= 10 ? Math.round(score) : null,
     updated: r.updated || r.dateAdded || new Date().toISOString(),
@@ -426,6 +464,10 @@ $('#updateBtn').addEventListener('click', async () => {
     if (!swReg.installing && !swReg.waiting) toast(`You're up to date (v${APP_VERSION})`);
   } catch { toast('Could not check – are you online?'); }
 });
+
+/* ---------- serves stepper ---------- */
+$('#servesMinus').addEventListener('click', () => { const v = toInt($('#fServes').value); $('#fServes').value = v && v > 1 ? v - 1 : ''; });
+$('#servesPlus').addEventListener('click', () => { const v = toInt($('#fServes').value) || 0; $('#fServes').value = Math.min(50, v + 1); });
 
 /* ---------- start ---------- */
 buildScorePicker();

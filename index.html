@@ -58,6 +58,24 @@
           </div>
         </div>
 
+        <div class="field two-col">
+          <div>
+            <span class="label">⏱️ Time taken</span>
+            <div class="time-inputs">
+              <label><input id="fHours" type="number" inputmode="numeric" min="0" max="48" placeholder="0"><span>hr</span></label>
+              <label><input id="fMins" type="number" inputmode="numeric" min="0" max="59" placeholder="0"><span>min</span></label>
+            </div>
+          </div>
+          <div>
+            <span class="label">🍽️ Serves</span>
+            <div class="stepper">
+              <button type="button" id="servesMinus" aria-label="Fewer">−</button>
+              <input id="fServes" type="number" inputmode="numeric" min="1" max="50" placeholder="–">
+              <button type="button" id="servesPlus" aria-label="More">+</button>
+            </div>
+          </div>
+        </div>
+
         <label class="field">
           <span class="label">Ingredients <small>one per line</small></span>
           <textarea id="fIngredients" rows="6" placeholder="200g pasta&#10;1 tin tomatoes&#10;Grated cheese"></textarea>
@@ -94,6 +112,8 @@
           <button type="button" data-field="ingredients">Ingredients</button>
           <button type="button" data-field="method">Method</button>
           <button type="button" data-field="score">Score</button>
+          <button type="button" data-field="time">Time</button>
+          <button type="button" data-field="serves">Serves</button>
         </div>
         <div id="searchInput" class="search-input"></div>
       </div>
